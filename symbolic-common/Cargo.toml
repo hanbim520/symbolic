@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-common"
-version = "12.12.3"
+version = "12.15.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -14,7 +14,8 @@ description = """
 Common types and utilities for symbolic, a library to symbolicate and process
 stack traces from native applications, minidumps or minified JavaScript.
 """
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

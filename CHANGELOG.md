@@ -1,25 +1,118 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- python bindings: Expose SourceMapView.get_source_contents function. ([#921](https://github.com/getsentry/symbolic/pull/921))
+
+**Fixes**
+
+- sourcemapcache: Don't return unmapped source locations. ([#922](https://github.com/getsentry/symbolic/pull/922))
+
+## 12.15.5
+
+**Fixes**
+
+- demangle: Fixed a crash/abort when providing bad input to the swift demangler. ([#917](https://github.com/getsentry/symbolic/pull/917))
+
+## 12.15.4
+
+**Fixes**
+
+- symcache: Fixed a bug introduced in 12.14.0 that resulted in symbols not being inserted. ([#915](https://github.com/getsentry/symbolic/pull/915))
+
+## 12.15.3
+
+**Features**
+
+- Allow specifying multiple symbol sources in minidump-stackwalk utility. ([#903](https://github.com/getsentry/symbolic/pull/903))
+- Add a subcommand to extract individual files from a unreal crash report to the `unreal_engine_crash` utility. ([#907](https://github.com/getsentry/symbolic/pull/907))
+
+**Fixes**
+
+- Do not hallucinate frames when stack walking in minidump-stackwalk utility. ([#904](https://github.com/getsentry/symbolic/pull/904))
+
+**Improvements**
+
+- Add normalization for paths in `FileKey`. ([#908](https://github.com/getsentry/symbolic/pull/908))
+
+## 12.14.1
+
+**Fixes**
+
+- Restore support for older Rust versions and clarify MSRV policy. ([#902](https://github.com/getsentry/symbolic/pull/902))
+
+## 12.14.0
+
+**Features**
+
+- Expose API to apply access pattern hints to a `ByteView`.([#899](https://github.com/getsentry/symbolic/pull/899)).
+
+**Fixes**
+
+- symcache: Explicitly map "holes" between functions ([#897](https://github.com/getsentry/symbolic/pull/897))
+
+## 12.13.4
+
+**Fixes**
+
+- Parse `debug_str_offs` section in Mach-O files ([#895](https://github.com/getsentry/symbolic/pull/895))
+
+## 12.13.3
+
+**Improvements**
+
+- Check UTF-8 validity memory efficiently ([#890](https://github.com/getsentry/symbolic/pull/890))
+
+## 12.13.2
+
+**Fixes**
+
+- Fixed GHA-based Windows builds ([#891](https://github.com/getsentry/symbolic/pull/891)).
+
+## 12.13.1
+
+**Fixes**
+
+- Fixed a compilation issue with older GCC compilers. ([#886](https://github.com/getsentry/symbolic/pull/886))
+
+## 12.13.0
+
+**Features**
+
+- Updated libswift demangle to v6.0.3. ([#885](https://github.com/getsentry/symbolic/pull/885))
+
+## 12.12.4
+
+**Fixes**
+
+- symcache: Fixed a bug related to to inlinee resolution during symcache conversion. ([#883](https://github.com/getsentry/symbolic/pull/883))
+
 ## 12.12.3
 
 **Fixes**
+
 - js: Prefer `"debug_id"` for sourcemap debug IDs. ([#878](https://github.com/getsentry/symbolic/pull/878)).
 
 ## 12.12.2
 
 **Fixes**
+
 - js: Fixed an error when reading debug IDs from sourcemaps with
   both `"debugId"` and `"debug_id"` keys ([#877](https://github.com/getsentry/symbolic/pull/877)).
 
 ## 12.12.1
 
-**Features**:
+**Features**
+
 - feat(js): Sourcemap debug IDs can now be read from the `"debugId"` field in addition to
   `"debug_id"` ([#870](https://github.com/getsentry/symbolic/pull/870)).
 
 ## 12.12.0
 
 **Fixes**
+
 - Unship "Support for DWARFv5 embedded source code extension ([#849](https://github.com/getsentry/symbolic/pull/849))".
   Unfortunately the check for whether an elf file contains embedded sources is prohibitively expensive in terms of memory.
   ([#870](https://github.com/getsentry/symbolic/pull/870))
@@ -27,6 +120,7 @@
 ## 12.11.1
 
 **Fixes**
+
 - symbolic-cfi: Skip invalid FDEs when converting DWARF to Breakpad CFI ([#868](https://github.com/getsentry/symbolic/pull/868))
 
 **Internal**:

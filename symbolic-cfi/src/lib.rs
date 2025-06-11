@@ -794,7 +794,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // row.
                 let mut ra_written = false;
                 for &(register, ref rule) in row.registers() {
-                    if !rule_cache.get(&register).map_or(false, |c| c == &rule) {
+                    if rule_cache.get(&register) != Some(&rule) {
                         rule_cache.insert(register, rule);
                         if register == ra {
                             ra_written = true;
@@ -1277,7 +1277,7 @@ fn write_preamble<W: Write>(mut writer: W, version: u32) -> Result<(), io::Error
 impl<'a> CfiCache<'a> {
     /// Load a symcache from a `ByteView`.
     pub fn from_bytes(byteview: ByteView<'a>) -> Result<Self, CfiError> {
-        if byteview.len() == 0 || byteview.starts_with(b"STACK") {
+        if byteview.is_empty() || byteview.starts_with(b"STACK") {
             let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
             return Ok(CfiCache { inner });
         }

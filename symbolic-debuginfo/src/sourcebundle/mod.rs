@@ -42,15 +42,17 @@
 //! bundle a file entry has a `url` and might carry `headers` or individual debug IDs
 //! per source file.
 
+mod utf8_reader;
+
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::error::Error;
-use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Seek, Write};
+use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
+use std::{fmt, io};
 
 use parking_lot::Mutex;
 use regex::Regex;
@@ -60,6 +62,7 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, SourceLinkMappings};
 
+use self::utf8_reader::Utf8Reader;
 use crate::base::*;
 use crate::js::{
     discover_debug_id, discover_sourcemap_embedded_debug_id, discover_sourcemaps_location,
@@ -551,7 +554,7 @@ impl<'data> SourceBundleIndex<'data> {
             let zip_path = Arc::new(zip_path.clone());
             if !file_info.path.is_empty() {
                 indexed_files.insert(
-                    FileKey::Path(file_info.path.clone().into()),
+                    FileKey::Path(normalize_path(&file_info.path).into()),
                     zip_path.clone(),
                 );
             }
@@ -937,7 +940,7 @@ impl SourceBundleDebugSession<'_> {
         &self,
         path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        self.get_source_file_descriptor(FileKey::Path(path.into()))
+        self.get_source_file_descriptor(FileKey::Path(normalize_path(path).into()))
     }
 
     /// Like [`source_by_path`](Self::source_by_path) but looks up by URL.
@@ -1034,6 +1037,11 @@ fn sanitize_bundle_path(path: &str) -> String {
         sanitized.remove(0);
     }
     sanitized
+}
+
+/// Normalizes all paths to follow the Linux standard of using forward slashes.
+fn normalize_path(path: &str) -> String {
+    path.replace('\\', "/")
 }
 
 /// Contains information about a file skipped in the SourceBundleWriter
@@ -1217,18 +1225,14 @@ where
     pub fn add_file<S, R>(
         &mut self,
         path: S,
-        mut file: R,
+        file: R,
         info: SourceFileInfo,
     ) -> Result<(), SourceBundleError>
     where
         S: AsRef<str>,
         R: Read,
     {
-        let mut buf = String::new();
-
-        if let Err(e) = file.read_to_string(&mut buf) {
-            return Err(SourceBundleError::new(SourceBundleErrorKind::ReadFailed, e));
-        }
+        let mut file_reader = Utf8Reader::new(file);
 
         let full_path = self.file_path(path.as_ref());
         let unique_path = self.unique_path(full_path);
@@ -1236,12 +1240,26 @@ where
         self.writer
             .start_file(unique_path.clone(), default_file_options())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
-        self.writer
-            .write_all(buf.as_bytes())
-            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
-        self.manifest.files.insert(unique_path, info);
-        Ok(())
+        match io::copy(&mut file_reader, &mut self.writer) {
+            Err(e) => {
+                self.writer
+                    .abort_file()
+                    .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
+
+                // ErrorKind::InvalidData is returned by Utf8Reader when the file is not valid UTF-8.
+                let error_kind = match e.kind() {
+                    ErrorKind::InvalidData => SourceBundleErrorKind::ReadFailed,
+                    _ => SourceBundleErrorKind::WriteFailed,
+                };
+
+                Err(SourceBundleError::new(error_kind, e))
+            }
+            Ok(_) => {
+                self.manifest.files.insert(unique_path, info);
+                Ok(())
+            }
+        }
     }
 
     /// Calls add_file, and handles any ReadFailed errors by calling the skipped_file_callback.
@@ -1536,6 +1554,50 @@ mod tests {
     fn debugsession_is_sendsync() {
         fn is_sendsync<T: Send + Sync>() {}
         is_sendsync::<SourceBundleDebugSession>();
+    }
+
+    #[test]
+    fn test_normalize_paths() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        for filename in &[
+            "C:\\users\\martin\\mydebugfile.cs",
+            "/usr/martin/mydebugfile.h",
+        ] {
+            let mut info = SourceFileInfo::new();
+            info.set_ty(SourceFileType::Source);
+            info.set_path(filename.to_string());
+            bundle.add_file_skip_read_failed(
+                sanitize_bundle_path(filename),
+                &b"somerandomdata"[..],
+                info,
+            )?;
+        }
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let session = bundle.debug_session().unwrap();
+
+        assert!(session
+            .source_by_path("C:\\users\\martin\\mydebugfile.cs")?
+            .is_some());
+        assert!(session
+            .source_by_path("C:/users/martin/mydebugfile.cs")?
+            .is_some());
+        assert!(session
+            .source_by_path("C:\\users\\martin/mydebugfile.cs")?
+            .is_some());
+        assert!(session
+            .source_by_path("/usr/martin/mydebugfile.h")?
+            .is_some());
+        assert!(session
+            .source_by_path("\\usr\\martin\\mydebugfile.h")?
+            .is_some());
+
+        Ok(())
     }
 
     #[test]

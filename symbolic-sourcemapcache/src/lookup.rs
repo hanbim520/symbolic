@@ -170,12 +170,19 @@ impl<'data> SourceMapCache<'data> {
     /// Looks up a [`SourcePosition`] in the minified source and resolves it
     /// to the original [`SourceLocation`].
     #[tracing::instrument(level = "trace", name = "SourceMapCache::lookup", skip_all)]
-    pub fn lookup(&self, sp: SourcePosition) -> Option<SourceLocation> {
+    pub fn lookup(&self, sp: SourcePosition) -> Option<SourceLocation<'_>> {
         let idx = match self.min_source_positions.binary_search(&sp.into()) {
             Ok(idx) => idx,
             Err(0) => return None,
             Err(idx) => idx - 1,
         };
+
+        // If the token has a lower minified line number,
+        // it actually belongs to the previous line. That means it should
+        // not match.
+        if self.min_source_positions.get(idx)?.line < sp.line {
+            return None;
+        }
 
         let sl = self.orig_source_locations.get(idx)?;
 

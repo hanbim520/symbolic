@@ -291,6 +291,30 @@ impl<'data> ElfObject<'data> {
                 return_partial_on_err!(elf::Symtab::parse(data, dyn_info.symtab, num_syms, ctx));
         }
 
+        // If the dynamic symbol table is empty, try finding a SHT_DYNSYM section in the section headers.
+        // See https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/elftypes.html:
+        //
+        // > This section holds a minimal set of symbols adequate for dynamic linking. See also SHT_SYMTAB. Currently, an object file may have either a section of SHT_SYMTAB type or a section of SHT_DYNSYM type, but not both.
+        if obj.dynsyms.is_empty() {
+            if let Some(shdr) = obj
+                .section_headers
+                .iter()
+                .find(|h| h.sh_type == elf::section_header::SHT_DYNSYM)
+            {
+                let size = shdr.sh_entsize;
+                let count = if size == 0 { 0 } else { shdr.sh_size / size };
+                obj.dynsyms = return_partial_on_err!(elf::Symtab::parse(
+                    data,
+                    shdr.sh_offset as usize,
+                    count as usize,
+                    ctx
+                ));
+
+                obj.dynstrtab =
+                    return_partial_on_err!(get_strtab(&obj.section_headers, shdr.sh_link as usize));
+            }
+        }
+
         obj.shdr_relocs = vec![];
         for (idx, section) in obj.section_headers.iter().enumerate() {
             let is_rela = section.sh_type == elf::section_header::SHT_RELA;
@@ -356,7 +380,7 @@ impl<'data> ElfObject<'data> {
     ///
     /// - None if there is no gnu_debuglink section
     /// - DebugLinkError if this section exists, but is malformed
-    pub fn debug_link(&self) -> Result<Option<DebugLink>, DebugLinkError> {
+    pub fn debug_link(&self) -> Result<Option<DebugLink<'_>>, DebugLinkError<'_>> {
         self.section("gnu_debuglink")
             .map(|section| DebugLink::from_data(section.data, self.endianity()))
             .transpose()

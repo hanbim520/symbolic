@@ -1,10 +1,32 @@
 # Changelog
 
-## Unreleased
+## 12.16.3
+
+- feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing. ([#935](https://github.com/getsentry/symbolic/pull/935))
+- fix(dwarf): -2 is now an allowed tombstone address in some DWARF sections.
+  For details, see https://github.com/gimli-rs/gimli/pull/791. ([#937](https://github.com/getsentry/symbolic/pull/937)).
+
+## 12.16.2
+
+**Fixes**
+
+- sourcemapcache: Tokens are now considered to only extend to the end of the line
+  (as intended). This means that some lookups that would previously (incorrectly)
+  have returned unminified source positions now return nothing. ([#932](https://github.com/getsentry/symbolic/pull/932))
+
+## 12.16.1
+
+**Fixes**
+
+- symcache: Fixed a bug in symcache generation for functions without line records. ([#930](https://github.com/getsentry/symbolic/pull/930))
+
+## 12.16.0
 
 **Features**
 
 - python bindings: Expose SourceMapView.get_source_contents function. ([#921](https://github.com/getsentry/symbolic/pull/921))
+- Change the MSRV version to 1.82. ([#927](https://github.com/getsentry/symbolic/pull/927))
+- build: switch to Python3.11 for releases builds. ([#929](https://github.com/getsentry/symbolic/pull/929))
 
 **Fixes**
 

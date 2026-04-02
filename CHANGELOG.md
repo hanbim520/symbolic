@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+**Improvements**
+
+- Enable symbolize and CFI by default in `examples/minidump_stackwalk`, and replace their
+corresponding flags `--symbolize` and `--cfi` with `--no-symbolize` and `--no-cfi` respectively. ([#963](https://github.com/getsentry/symbolic/pull/963))
+
+## 12.17.3
+
+**Fixes**
+
+- Use goblin permissive PE parse-mode ([#960](https://github.com/getsentry/symbolic/pull/960))
+- DWARF: Correctly detect languages in LTO-compiled binaries ([#961](https://github.com/getsentry/symbolic/pull/961))
+
 ## 12.17.2
 
 **Fixes**
